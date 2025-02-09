@@ -1,0 +1,20 @@
+[tool.black]
+line-length = 88
+target-version = ['py312']
+include = '\.pyi?$'
+exclude = '''
+(
+    /(
+    | \.git
+    | \.mypy_cache
+    | \.venv
+    )/
+    )
+    
+)
+'''
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = false
+mypy_path = "./src"
+check_untyped_defs = true
