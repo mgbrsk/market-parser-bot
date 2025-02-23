@@ -1,0 +1,40 @@
+@startuml
+
+enum State {
+    GREETING
+    CHECK_LANGUAGE
+    CHECK_IS_US
+    CHECK_COUNTRY
+    CHECK_POST_CODE
+    SEARCH_TEXT
+    WORKING
+}
+
+entity User {
+    * id: str
+    +username: str | None
+    +state: str | None
+    +settings: JSONB, default={}
+}
+
+State -> User::state
+
+json settings {
+    "language": "RU",
+    "country": "US",
+    "postal_code": "123456"
+}
+
+settings -> User::settings
+
+entity ParseOrder {
+    * id: int
+    +user_id: str
+    +search_text: str
+    +lowest_price: float | None
+    +last_check: datetime.datetime | None
+}
+
+User::id ||-right-o{ ParseOrder::user_id
+
+@enduml

@@ -1,0 +1,28 @@
+@startuml
+
+autonumber
+
+actor       User       as u
+participant Telegram as tg
+queue       Bus       as bus
+participant Core as core
+database    DB    as db
+
+
+u -> tg : Пользователь отправляет \nсообщение
+tg <-> db : Сохранение/чтение стейта пользователя
+tg -> bus : Поисковый запрос \nпользователя летит в шину
+bus -> core : Запрос попадает в \nшедулер-парсер
+core -> db : Сохранение поискового запроса
+db -> core : Нашли запросы, которые \nне проверялись больше часа
+note right
+core инициирует 
+проверку в БД запросом
+end note
+core -> core : Парсим по запросу
+core -> db : Сохранение новой низкой цены
+core -> bus : Событие-уведомление о \nновой низкой стоимости
+bus -> tg : Уведомление пользователя
+tg -> u : Сообщение пользователю
+
+@enduml

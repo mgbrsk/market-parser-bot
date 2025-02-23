@@ -1,0 +1,38 @@
+@startuml
+
+queue Bus
+group сохранение нового заказа на парсинг
+    Bus -> Сore.consume: ParseOrder
+    Сore.consume -> Core.save_order: ParseOrder
+    Core.save_order -> Core.repo.save_parse_order: ParseOrder
+end
+
+note over Core.start: запускается в цикле while
+Core.start -> Core.check_orders
+activate Core.check_orders
+
+Core.check_orders -> Core.repo.get_old_orders
+Core.repo.get_old_orders --> Core.check_orders: list[ParseOrder]
+loop по всем просроченным заказам на парсинг
+    Core.check_orders -> Core.get_page_url_with_lowest_price: ParseOrder
+    Core.get_page_url_with_lowest_price --> Core.check_orders: str
+    Core.check_orders -> Core.get_url: str
+    Core.get_url --> Core.check_orders: SearchResult
+    Core.check_orders -> Core.get_goods: SearchResult
+    Core.get_goods --> Core.check_orders: list[Good]
+    Core.check_orders -> Core.get_lowest_price_good: list[Good]
+    Core.get_lowest_price_good --> Core.check_orders: Good
+    Core.check_orders -> Core.save_search_result: tuple(ParseOrder, Good)
+    Core.save_search_result -> Core.repo.update_parse_order: ParseOrder
+    note right: сохраняем либо только время обновления, либо и время и цену
+    group цена товара меньше чем в старой записи ParseOrder
+        Core.check_orders -> Core.create_answer: tuple[ParseOrder, Good]
+        Core.create_answer --> Core.check_orders: MessageToUser
+        Core.check_orders -> Core.collector: MessageToUser
+        Core.collector -> Bus: MessageToUser
+    end
+end
+
+deactivate Core.check_orders
+
+@enduml

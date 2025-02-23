@@ -1,0 +1,187 @@
+@startuml
+
+package CommonSpace {
+    together {
+        class BaseEvent {
+            +id: UUID
+        }
+        
+        class UserBase {
+            +user_id: str
+        }
+        
+        entity ParseOrder {
+            +search_text: str
+            +lowest_price: float | None
+            +last_check: datetime.datetime | None
+        }
+    
+    
+        class Message {
+            +text: str
+        }
+        
+        entity Button {
+            +text: str
+        }
+        
+        entity MessageToUser{
+            +buttons: list[Button]
+        }
+        
+        enum Language {
+            RU
+            EN
+            CH
+            HI
+        }
+        
+        MessageToUser -[hidden]> Button
+        MessageToUser -[hidden]> Message
+    }
+    
+    package TelegramSpace {
+
+        entity MessageFromUser{}
+        
+        enum State {
+            GREETING
+            CHECK_LANGUAGE
+            CHECK_IS_US
+            CHECK_COUNTRY
+            CHECK_POST_CODE
+            SEARCH_TEXT
+            WORKING
+        }
+        
+        entity UserState {
+            state: State
+            settings: dict[str, str]
+        }
+        
+        note left of UserState::settings
+            Здесь лежат настройки 
+            пользователя (язык, страна, постал код)
+        end note
+        
+        ' Определение класса ParticipantA
+        class Telegram {
+            +Bot, Dispatcher, etc
+            +generate_answer(message: MessageFromUser) -> MessageToUser
+            +send_message(message: MessageToUser)
+            +generate_order(search_text: text, user_id: str) -> ParseOrder
+        }
+        
+        MessageFromUser -[hidden]> Telegram
+    }
+    
+    
+    BaseEvent <|-- Message
+    UserBase <|-- Message
+    Message <|-- MessageFromUser
+    Message <|-- MessageToUser
+    MessageToUser *-- Button
+    UserBase <|-- UserState
+    UserState *-- State
+    BaseEvent <|-- ParseOrder
+    UserBase <|-- ParseOrder
+    
+    
+    ' Определение класса Bus
+    class Bus {
+        +services: List[Participant]
+        +messages: List[BaseEvent]
+        +collect(event: BaseEvent)
+        +register(service: Participant)
+        +handle()
+    }
+    
+    
+    ' Определение класса Participant
+    class Participant {
+        +collector: Any
+        +register_collector(collector: Any)
+        +consume(event: Event)
+        +start()
+    }
+    
+    package CoreSpace{
+        entity SearchResult {
+            +html: str
+            +page_number: int
+        }
+        
+        entity Good {
+            +title: str
+            +price: float
+            +rating: float
+            +img_url: str
+            +description: str
+        }
+        
+        ' Определение класса ParticipantB
+        class Core {
+            +save_order(order: ParseOrder)
+            +check_orders()
+            +get_page_url_with_lowest_price(order: ParseOrder) -> str
+            +get_url(url: str) -> SearchResult
+            +get_goods(page: SearchResult) -> list[Good]
+            +get_lowest_price_good(goods: list[Good]) -> Good
+            +save_search_result(order: ParseOrder, good: Good)
+            +create_answer(order: ParseOrder, good: Good) -> MessageToUser
+        }
+        
+        note left of Core::save_order
+            Сохранение в БД поискового запроса пользователя
+        end note
+        note left of Core::check_orders
+            Запускается в цикле, вытаскивает из БД
+            поисковые запросы, которые не запускались 
+            больше часа, все остальные методы 
+            вызываются из него
+        end note
+        note left of Core::get_page_url_with_lowest_price
+            Формирует url для получения страниц 
+            по низкой цене
+        end note
+        note left of Core::get_url
+            Получение через aiohttp/httpx (+proxy)
+            html-страницы
+        end note
+        note left of Core::get_goods
+            Вычленяет карточки товара со страницы
+        end note
+        note left of Core::get_lowest_price_good
+            Возвращает карточку самого дешевого товара
+        end note
+        note left of Core::save_search_result
+            Проверяет текущую низшую стоимость 
+            из БД, если ниже  - сохраняем
+        end note
+        note left of Core::create_answer
+            Формирует текст уведомления и само событие
+        end note
+    }
+    
+    
+    Participant <|-- Telegram
+    Participant <|-- Core
+    
+    
+    ' Взаимодействия
+    Telegram --> Bus : Регистрируем в шине
+    Core --> Bus : Регистрируем в шине
+}
+
+
+class Repository {
+    +create_user_state(state: UserState) -> None
+    +get_user_state(user_id: str) -> UserState
+    +update_user_state(state: UserState) -> None
+    +save_parse_order(order: ParseOrder) -> None
+    +update_parse_order(order: ParseOrder) -> None
+    +get_old_orders() -> list[ParseOrder]
+}
+
+
+@enduml

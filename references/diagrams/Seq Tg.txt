@@ -1,0 +1,30 @@
+@startuml
+
+participant Tg.start
+participant Tg.send_message
+
+Tg.start -> Tg.generate_answer: MessageFromUser
+activate Tg.generate_answer
+    Tg.generate_answer -> Tg.repo.get_user_state: user_id: str
+    Tg.repo.get_user_state --> Tg.generate_answer: UserState
+    group если не нашлось пользователя
+        Tg.generate_answer -> Tg.repo.create_user_state: UserState (создаем пользователя и его состояние)
+    end
+    Tg.generate_answer -> Tg.generate_answer: внутренняя логика \nгенерации ответа и \nобновления стейта
+    Tg.generate_answer -> Tg.repo.update_user_state: UserState (обновляем состояние пользователя)
+    group если перешли в состояние WORKING
+        Tg.generate_answer -> Tg.generate_order: поисковый запрос
+        Tg.generate_order -> Tg.collector: ParseOrder
+        queue Bus
+        Tg.collector -> Bus: ParseOrder
+    end
+    Tg.generate_answer --> Tg.start: MessageToUser
+deactivate Tg.generate_answer
+Tg.start -> Tg.send_message: MessageToUser
+
+group событие из Core
+    Bus -> Tg.consume: MessageToUser
+    Tg.consume -> Tg.send_message: MessageToUser
+end
+
+@enduml
