@@ -1,5 +1,6 @@
 import pytest
 
+from bot.adapters.handlers import AbstractHandler
 from src.bot.adapters.message import AbstractBusMessage
 from src.bot.service_layer.messagebus import MessageBus
 

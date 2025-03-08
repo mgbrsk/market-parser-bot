@@ -10,6 +10,8 @@ class MessageBus:
 
     async def handle(self, message: AbstractBusMessage):
         self.queue.append(message)
+        for handler in self.handlers:
+            await handler.handle(self.queue.pop(0))
 
     async def register(self, handler: AbstractHandler):
         self.handlers.append(handler)
